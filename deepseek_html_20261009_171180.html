@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Castle Crawler — Редактор</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Rajdhani:wght@500;700&display=swap');
+* { box-sizing:border-box; }
+body {
+    margin:0; padding:0; min-height:100vh;
+    background:radial-gradient(circle at 50% 20%, #1a1030, #0a0a0a 70%);
+    color:#fff; font-family:'Rajdhani',sans-serif;
+    overflow-y:auto;
+}
+header {
+    padding:20px 30px; border-bottom:2px solid #d4af37;
+    display:flex; justify-content:space-between; align-items:center;
+    flex-wrap:wrap; gap:15px;
+    background:rgba(0,0,0,0.4);
+    position:sticky; top:0; z-index:100;
+}
+header h1 {
+    margin:0; font-family:'Cinzel',serif; font-size:28px; color:#d4af37;
+    text-shadow:0 0 20px rgba(212,175,55,0.6); letter-spacing:2px;
+}
+header .nav { display:flex; gap:10px; flex-wrap:wrap; }
+.navBtn {
+    background:linear-gradient(135deg,#1e2025,#2a2d35);
+    color:#aaa; border:2px solid #444; padding:10px 20px;
+    border-radius:8px; cursor:pointer;
+    font-family:'Rajdhani',sans-serif; font-weight:700; font-size:16px;
+    transition:all 0.2s;
+}
+.navBtn:hover { transform:translateY(-2px); border-color:#d4af37; }
+.navBtn.active { border-color:#d4af37; color:#d4af37; box-shadow:0 0 15px rgba(212,175,55,0.5); }
+
+main { padding:20px; max-width:1400px; margin:0 auto; }
+.screen { display:none; }
+.screen.active { display:block; }
+
+#enemyEditor .layout {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+}
+@media (max-width:900px) {
+    #enemyEditor .layout { grid-template-columns:1fr; }
+}
+
+.panel {
+    background:linear-gradient(135deg,rgba(30,32,37,0.9),rgba(20,20,25,0.9));
+    border:2px solid #444; border-radius:12px; padding:20px;
+}
+.panel h2 {
+    margin:0 0 15px; font-family:'Cinzel',serif; font-size:22px;
+    color:#d4af37; border-bottom:1px solid #444; padding-bottom:10px;
+}
+.panel h3 {
+    margin:15px 0 10px; color:#d4af37; font-size:17px;
+    font-family:'Cinzel',serif;
+}
+
+.field { margin-bottom:14px; }
+.field label {
+    display:block; font-size:14px; font-weight:700;
+    color:#aaa; margin-bottom:6px; letter-spacing:1px;
+}
+.field input[type="text"],
+.field input[type="number"],
+.field select,
+.field textarea {
+    width:100%; padding:10px 12px;
+    background:rgba(0,0,0,0.5); color:#fff;
+    border:2px solid #444; border-radius:6px;
+    font-family:'Rajdhani',sans-serif; font-size:16px; font-weight:600;
+}
+.field input:focus, .field select:focus { outline:none; border-color:#d4af37; }
+.field input[type="color"] {
+    width:100%; height:44px; padding:2px;
+    background:rgba(0,0,0,0.5); border:2px solid #444;
+    border-radius:6px; cursor:pointer;
+}
+.field input[type="range"] { width:100%; accent-color:#d4af37; }
+.field .rangeVal { color:#d4af37; font-weight:700; }
+.row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+.attackGrid {
+    display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;
+}
+.attackCard {
+    background:rgba(0,0,0,0.4); border:2px solid #444;
+    border-radius:8px; padding:10px; cursor:pointer;
+    text-align:center; transition:all 0.15s;
+}
+.attackCard:hover { border-color:#d4af37; transform:translateY(-2px); }
+.attackCard.selected {
+    border-color:#d4af37; background:linear-gradient(135deg,rgba(212,175,55,0.2),rgba(50,30,10,0.3));
+    box-shadow:0 0 15px rgba(212,175,55,0.5);
+}
+.attackCard .icon { font-size:28px; }
+.attackCard .name { font-weight:700; font-size:14px; margin-top:4px; }
+.attackCard .desc { font-size:11px; color:#999; margin-top:2px; }
+
+.debuffGrid {
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;
+}
+.debuffBtn {
+    padding:10px 6px; background:rgba(0,0,0,0.4);
+    border:2px solid #444; border-radius:6px; cursor:pointer;
+    text-align:center; font-weight:700; font-size:13px;
+    transition:all 0.15s;
+}
+.debuffBtn:hover { transform:translateY(-2px); }
+.debuffBtn.selected { color:#fff; }
+.debuffBtn[data-d="none"].selected { border-color:#888; background:rgba(150,150,150,0.2); }
+.debuffBtn[data-d="ice"].selected { border-color:#80d0ff; background:rgba(128,208,255,0.2); color:#a0e0ff; }
+.debuffBtn[data-d="fire"].selected { border-color:#ff5522; background:rgba(255,85,34,0.2); color:#ff8855; }
+.debuffBtn[data-d="infect"].selected { border-color:#00ff88; background:rgba(0,255,136,0.2); color:#88ffbb; }
+.debuffBtn[data-d="slow"].selected { border-color:#9b59b6; background:rgba(155,89,182,0.2); color:#d5a6e8; }
+.debuffBtn[data-d="stun"].selected { border-color:#f1c40f; background:rgba(241,196,15,0.2); color:#ffe066; }
+
+.previewWrap {
+    display:flex; flex-direction:column; align-items:center; gap:15px;
+}
+#previewCanvas {
+    background:radial-gradient(circle at 50% 60%, #2a2030, #0f0a12);
+    border:2px solid #d4af37; border-radius:12px;
+    box-shadow:0 0 30px rgba(212,175,55,0.3);
+    width:100%; max-width:420px; height:280px;
+}
+.previewStats {
+    width:100%; max-width:420px;
+    background:rgba(0,0,0,0.4); border-radius:8px;
+    padding:12px; font-size:14px;
+}
+.previewStats .line {
+    display:flex; justify-content:space-between;
+    padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05);
+}
+.previewStats .line b { color:#d4af37; }
+
+.btnRow { display:flex; gap:10px; flex-wrap:wrap; margin-top:15px; }
+.btn {
+    padding:12px 24px; border-radius:8px; border:none;
+    font-family:'Rajdhani',sans-serif; font-weight:700; font-size:16px;
+    cursor:pointer; transition:all 0.2s;
+}
+.btn:hover { transform:translateY(-2px); }
+.btn.primary { background:linear-gradient(135deg,#2ecc71,#27ae60); color:#fff; }
+.btn.secondary { background:linear-gradient(135deg,#1e2025,#2a2d35); color:#d4af37; border:2px solid #d4af37; }
+.btn.danger { background:linear-gradient(135deg,#e74c3c,#c0392b); color:#fff; }
+.btn.small { padding:8px 16px; font-size:14px; }
+
+#enemyList { display:flex; flex-direction:column; gap:10px; margin-top:15px; }
+.enemyItem {
+    background:rgba(0,0,0,0.4); border:2px solid #444; border-radius:8px;
+    padding:12px; display:flex; align-items:center; gap:12px;
+    cursor:pointer; transition:all 0.15s;
+}
+.enemyItem:hover { border-color:#d4af37; transform:translateX(4px); }
+.enemyItem.selected { border-color:#d4af37; background:linear-gradient(135deg,rgba(212,175,55,0.15),rgba(50,30,10,0.3)); }
+.enemyItem canvas {
+    width:48px; height:48px; border-radius:6px;
+    image-rendering:pixelated; background:#0f0a12;
+    border:1px solid #333;
+}
+.enemyItem .info { flex:1; }
+.enemyItem .name { font-weight:700; font-size:16px; color:#fff; }
+.enemyItem .meta { font-size:12px; color:#888; }
+
+#globalSettings {
+    background:linear-gradient(135deg,rgba(60,30,10,0.5),rgba(20,10,5,0.5));
+    border:2px solid #d4af37; border-radius:12px;
+    padding:15px 20px; margin-bottom:20px;
+}
+#globalSettings h3 {
+    margin:0 0 10px; color:#d4af37; font-family:'Cinzel',serif; font-size:18px;
+}
+#globalSettings .row { display:flex; align-items:center; gap:15px; flex-wrap:wrap; }
+#globalSettings label { font-size:14px; color:#ccc; }
+#spawnChanceVal { color:#d4af37; font-weight:700; font-size:18px; min-width:50px; }
+
+/* Вариации */
+.variationList { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.variationItem {
+    background:rgba(0,0,0,0.4); border:2px solid #555; border-radius:8px;
+    padding:10px; display:grid;
+    grid-template-columns:28px 1fr 80px 60px 32px;
+    gap:8px; align-items:center;
+}
+.variationItem .vColor {
+    width:28px; height:28px; border-radius:6px; border:1px solid #333;
+}
+.variationItem input[type="text"] {
+    padding:6px 8px; font-size:14px;
+    background:rgba(0,0,0,0.5); color:#fff;
+    border:2px solid #444; border-radius:5px;
+    font-family:'Rajdhani',sans-serif; font-weight:600;
+}
+.variationItem input[type="number"] {
+    padding:6px; font-size:14px; text-align:center;
+    background:rgba(0,0,0,0.5); color:#fff;
+    border:2px solid #444; border-radius:5px;
+    font-family:'Rajdhani',sans-serif; font-weight:600;
+}
+.variationItem .vDel {
+    background:linear-gradient(135deg,#e74c3c,#c0392b);
+    color:#fff; border:none; border-radius:5px;
+    padding:6px; cursor:pointer; font-weight:700;
+}
+.variationItem .vLabel { font-size:12px; color:#888; }
+
+.modal {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.85); z-index:1000;
+    display:none; align-items:center; justify-content:center;
+    padding:20px;
+}
+.modal.active { display:flex; }
+.modalBox {
+    background:linear-gradient(135deg,#1a1c20,#0f1012);
+    border:2px solid #d4af37; border-radius:12px;
+    padding:20px; max-width:700px; width:100%;
+    max-height:85vh; display:flex; flex-direction:column;
+}
+.modalBox h3 { margin:0 0 15px; color:#d4af37; font-family:'Cinzel',serif; }
+.modalBox textarea {
+    width:100%; flex:1; min-height:250px;
+    background:rgba(0,0,0,0.6); color:#8f8;
+    border:2px solid #444; border-radius:6px;
+    padding:12px; font-family:'Courier New',monospace;
+    font-size:12px; resize:vertical;
+}
+.modalBox .btnRow { margin-top:15px; }
+
+.toast {
+    position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+    background:linear-gradient(135deg,#2ecc71,#27ae60);
+    color:#fff; padding:12px 30px; border-radius:8px;
+    font-weight:700; font-size:16px; z-index:2000;
+    opacity:0; transition:opacity 0.3s;
+    pointer-events:none;
+}
+.toast.show { opacity:1; }
+.toast.error { background:linear-gradient(135deg,#e74c3c,#c0392b); }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>⚔️ РЕДАКТОР</h1>
+    <div class="nav">
+        <button class="navBtn active" data-screen="enemyEditor">👾 Враги</button>
+        <button class="navBtn" data-screen="levelEditor">🗺️ Уровни</button>
+        <button class="navBtn" id="openSandboxBtn">🧪 Тест-арена</button>
+    </div>
+</header>
+
+<main>
+
+    <div id="enemyEditor" class="screen active">
+        <div id="globalSettings">
+            <h3>⚙️ Общие настройки</h3>
+            <div class="row">
+                <label>Шанс спавна кастомных врагов в игре:</label>
+                <input type="range" id="spawnChance" min="0" max="100" value="20" style="max-width:300px; flex:1;">
+                <span id="spawnChanceVal">20%</span>
+            </div>
+        </div>
+
+        <div class="layout">
+            <div class="panel">
+                <h2>📝 Параметры</h2>
+
+                <div class="field">
+                    <label>Имя врага</label>
+                    <input type="text" id="f_name" value="Новый враг" maxlength="30">
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>Основной цвет</label>
+                        <input type="color" id="f_color" value="#ff3366">
+                    </div>
+                    <div class="field">
+                        <label>Тёмный (низ)</label>
+                        <input type="color" id="f_dark" value="#990033">
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Размер: <span class="rangeVal" id="f_size_val">16</span> px</label>
+                    <input type="range" id="f_size" min="10" max="60" value="16">
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>HP: <span class="rangeVal" id="f_hp_val">25</span></label>
+                        <input type="range" id="f_hp" min="5" max="500" value="25">
+                    </div>
+                    <div class="field">
+                        <label>Урон: <span class="rangeVal" id="f_dmg_val">10</span></label>
+                        <input type="range" id="f_dmg" min="1" max="100" value="10">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>Скорость: <span class="rangeVal" id="f_speed_val">110</span></label>
+                        <input type="range" id="f_speed" min="20" max="300" value="110">
+                    </div>
+                    <div class="field">
+                        <label>Радиус атаки: <span class="rangeVal" id="f_range_val">30</span></label>
+                        <input type="range" id="f_range" min="16" max="500" value="30">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>XP: <span class="rangeVal" id="f_xp_val">2</span></label>
+                        <input type="range" id="f_xp" min="1" max="100" value="2">
+                    </div>
+                    <div class="field">
+                        <label>Золото: <span class="rangeVal" id="f_gold_val">1</span></label>
+                        <input type="range" id="f_gold" min="1" max="100" value="1">
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Атака</label>
+                    <div class="attackGrid" id="attackGrid">
+                        <div class="attackCard selected" data-atk="melee">
+                            <div class="icon">⚔️</div>
+                            <div class="name">Ближний</div>
+                            <div class="desc">Контакт</div>
+                        </div>
+                        <div class="attackCard" data-atk="ranged">
+                            <div class="icon">🎯</div>
+                            <div class="name">Стрелок</div>
+                            <div class="desc">1 пуля</div>
+                        </div>
+                        <div class="attackCard" data-atk="fan">
+                            <div class="icon">🔱</div>
+                            <div class="name">Веер</div>
+                            <div class="desc">5 пуль</div>
+                        </div>
+                        <div class="attackCard" data-atk="aoe">
+                            <div class="icon">💥</div>
+                            <div class="name">AoE</div>
+                            <div class="desc">Взрыв</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ТРАЕКТОРИЯ ПУЛЬ -->
+                <h3>🎯 Траектория снаряда</h3>
+                <div class="field">
+                    <label>Смещение угла: <span class="rangeVal" id="f_angle_val">0</span>° (вправо +, влево −)</label>
+                    <input type="range" id="f_angle" min="-90" max="90" value="0">
+                </div>
+                <div class="field">
+                    <label>Скорость пуль: <span class="rangeVal" id="f_bulletSpeed_val">350</span> px/сек</label>
+                    <input type="range" id="f_bulletSpeed" min="50" max="900" value="350">
+                </div>
+
+                <div class="field">
+                    <label>Базовый дебафф</label>
+                    <div class="debuffGrid" id="debuffGrid">
+                        <div class="debuffBtn selected" data-d="none">🚫<br>Нет</div>
+                        <div class="debuffBtn" data-d="ice">❄️<br>Лёд</div>
+                        <div class="debuffBtn" data-d="fire">🔥<br>Огонь</div>
+                        <div class="debuffBtn" data-d="infect">🦠<br>Инфекция</div>
+                        <div class="debuffBtn" data-d="slow">🐌<br>Замедл.</div>
+                        <div class="debuffBtn" data-d="stun">💫<br>Оглуш.</div>
+                    </div>
+                </div>
+
+                <!-- ВАРИАЦИИ -->
+                <h3>🎨 Вариации (шанс выпадения)</h3>
+                <p style="font-size:12px; color:#888; margin:0 0 10px;">
+                    Каждая вариация — это отдельный вид того же врага. Например, "Синий" с другим цветом и статами.
+                </p>
+                <div class="variationList" id="variationList"></div>
+                <div class="btnRow">
+                    <button class="btn secondary small" id="addVariationBtn">➕ Добавить вариацию</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>👁️ Превью в бою</h2>
+                <div class="previewWrap">
+                    <canvas id="previewCanvas" width="420" height="280"></canvas>
+                    <div class="previewStats">
+                        <div class="line"><span>HP</span><b id="ps_hp">25</b></div>
+                        <div class="line"><span>Урон</span><b id="ps_dmg">10</b></div>
+                        <div class="line"><span>Скорость</span><b id="ps_speed">110</b></div>
+                        <div class="line"><span>Атака</span><b id="ps_atk">melee</b></div>
+                        <div class="line"><span>Скорость пуль</span><b id="ps_bulletSpeed">350</b></div>
+                        <div class="line"><span>Угол</span><b id="ps_angle">0°</b></div>
+                        <div class="line"><span>Дебафф</span><b id="ps_debuff">нет</b></div>
+                        <div class="line"><span>Вариаций</span><b id="ps_variations">0</b></div>
+                    </div>
+                    <div class="btnRow" style="justify-content:center;">
+                        <button class="btn primary" id="saveEnemyBtn">💾 Сохранить</button>
+                        <button class="btn secondary" id="newEnemyBtn">✨ Новый</button>
+                    </div>
+                </div>
+
+                <h2 style="margin-top:25px;">📚 Мои враги (<span id="enemyCount">0</span>)</h2>
+                <div id="enemyList"></div>
+
+                <div class="btnRow">
+                    <button class="btn primary small" id="sandboxExportBtn">🧪 Скопировать для теста</button>
+                    <button class="btn secondary small" id="exportBtn">📤 Экспорт</button>
+                    <button class="btn secondary small" id="importBtn">📥 Импорт</button>
+                    <button class="btn danger small" id="clearAllBtn">🗑️ Очистить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="levelEditor" class="screen">
+        <div class="panel" style="text-align:center; padding:60px 20px;">
+            <h2>🗺️ Редактор уровней</h2>
+            <p style="color:#888; font-size:18px; margin:20px 0;">🚧 В разработке.</p>
+        </div>
+    </div>
+
+</main>
+
+<div class="modal" id="jsonModal">
+    <div class="modalBox">
+        <h3 id="jsonModalTitle">Экспорт</h3>
+        <textarea id="jsonText" readonly></textarea>
+        <div class="btnRow">
+            <button class="btn primary" id="jsonCopyBtn">📋 Копировать</button>
+            <button class="btn secondary" id="jsonPasteBtn" style="display:none;">📥 Вставить</button>
+            <button class="btn secondary" id="jsonCloseBtn">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== ХРАНИЛИЩЕ ====================
+const STORAGE_KEY = 'castleCrawler_enemies_v1';
+const GLOBAL_KEY = 'castleCrawler_settings_v1';
+
+let savedEnemies = [];
+let currentEnemy = createDefaultEnemy();
+let editingIndex = -1;
+let globalSpawnChance = 20;
+let previewAnimTime = 0;
+
+function createDefaultEnemy() {
+    return {
+        id: 'enemy_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+        name: 'Новый враг',
+        color: '#ff3366',
+        dark: '#990033',
+        size: 16,
+        hp: 25,
+        dmg: 10,
+        speed: 110,
+        range: 30,
+        xp: 2,
+        gold: 1,
+        attack: 'melee',
+        debuff: 'none',
+        bulletSpeed: 350,
+        bulletAngle: 0,
+        variations: []   // [{name:'', color:'#...', hpMult:1.0, dmgMult:1.0, debuff:'none', chance:25}]
+    };
+}
+
+function loadFromStorage() {
+    try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        if (data) savedEnemies = JSON.parse(data) || [];
+    } catch(e) { savedEnemies = []; }
+    try {
+        const s = localStorage.getItem(GLOBAL_KEY);
+        if (s) {
+            const obj = JSON.parse(s);
+            globalSpawnChance = obj.spawnChance ?? 20;
+        }
+    } catch(e) {}
+}
+function saveToStorage() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(savedEnemies));
+    localStorage.setItem(GLOBAL_KEY, JSON.stringify({ spawnChance: globalSpawnChance }));
+}
+
+// ==================== BINDING ====================
+function bindField(id, key, transform = v => v) {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
+        currentEnemy[key] = transform(el.value);
+        updatePreview();
+    });
+}
+
+function fillFormFromCurrent() {
+    document.getElementById('f_name').value = currentEnemy.name;
+    document.getElementById('f_color').value = currentEnemy.color;
+    document.getElementById('f_dark').value = currentEnemy.dark;
+    document.getElementById('f_size').value = currentEnemy.size;
+    document.getElementById('f_size_val').textContent = currentEnemy.size;
+    document.getElementById('f_hp').value = currentEnemy.hp;
+    document.getElementById('f_hp_val').textContent = currentEnemy.hp;
+    document.getElementById('f_dmg').value = currentEnemy.dmg;
+    document.getElementById('f_dmg_val').textContent = currentEnemy.dmg;
+    document.getElementById('f_speed').value = currentEnemy.speed;
+    document.getElementById('f_speed_val').textContent = currentEnemy.speed;
+    document.getElementById('f_range').value = currentEnemy.range;
+    document.getElementById('f_range_val').textContent = currentEnemy.range;
+    document.getElementById('f_xp').value = currentEnemy.xp;
+    document.getElementById('f_xp_val').textContent = currentEnemy.xp;
+    document.getElementById('f_gold').value = currentEnemy.gold;
+    document.getElementById('f_gold_val').textContent = currentEnemy.gold;
+    document.getElementById('f_bulletSpeed').value = currentEnemy.bulletSpeed;
+    document.getElementById('f_bulletSpeed_val').textContent = currentEnemy.bulletSpeed;
+    document.getElementById('f_angle').value = currentEnemy.bulletAngle;
+    document.getElementById('f_angle_val').textContent = currentEnemy.bulletAngle;
+
+    document.querySelectorAll('#attackGrid .attackCard').forEach(c => {
+        c.classList.toggle('selected', c.dataset.atk === currentEnemy.attack);
+    });
+    document.querySelectorAll('#debuffGrid .debuffBtn').forEach(b => {
+        b.classList.toggle('selected', b.dataset.d === currentEnemy.debuff);
+    });
+    renderVariations();
+    updatePreview();
+}
+
+// ==================== ПРЕВЬЮ (с игроком и врагом) ====================
+function drawPlayer(ctx, x, y, angle = -Math.PI/2) {
+    const r = 18;
+    // Тень
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + r*0.95, r, r*0.35, 0, 0, Math.PI*2);
+    ctx.fill();
+    // Тело
+    ctx.shadowBlur = 20; ctx.shadowColor = '#00d2ff';
+    const g = ctx.createRadialGradient(x - r*0.35, y - r*0.35, r*0.1, x, y, r*1.1);
+    g.addColorStop(0, '#80e0ff');
+    g.addColorStop(0.6, '#4facfe');
+    g.addColorStop(1, '#0066cc');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+    // Пушка
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(angle);
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fillRect(r - 2, -6, 20, 12);
+    ctx.restore();
+    // Глаза
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(x - r*0.35, y - r*0.15, r*0.25, 0, Math.PI*2);
+    ctx.arc(x + r*0.35, y - r*0.15, r*0.25, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#0d0f12';
+    ctx.beginPath();
+    ctx.arc(x - r*0.35, y - r*0.15, r*0.12, 0, Math.PI*2);
+    ctx.arc(x + r*0.35, y - r*0.15, r*0.12, 0, Math.PI*2);
+    ctx.fill();
+}
+
+function drawEnemyShape(ctx, e, x, y, scale = 1) {
+    const r = e.size * scale;
+    const dark = e.dark || '#333';
+
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + r*0.9, r, r*0.35, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.shadowBlur = 20; ctx.shadowColor = e.color;
+    const g = ctx.createRadialGradient(x - r*0.35, y - r*0.35, r*0.1, x, y, r*1.1);
+    g.addColorStop(0, e.color);
+    g.addColorStop(0.7, e.color);
+    g.addColorStop(1, dark);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Дебафф-тон
+    const tints = {
+        ice:'rgba(120,200,255,0.35)', fire:'rgba(255,80,40,0.4)',
+        infect:'rgba(80,255,120,0.3)', slow:'rgba(155,89,182,0.35)',
+        stun:'rgba(241,196,15,0.4)'
+    };
+    if (e.debuff && e.debuff !== 'none' && tints[e.debuff]) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = tints[e.debuff];
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    }
+
+    // Обводка
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = Math.max(1, r*0.08);
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.stroke();
+
+    // Глаза
+    const eyeR = Math.max(2, r*0.22);
+    const eyeOff = r*0.35;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(x - eyeOff, y - r*0.2, eyeR, 0, Math.PI*2);
+    ctx.arc(x + eyeOff, y - r*0.2, eyeR, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(x - eyeOff, y - r*0.2, eyeR*0.5, 0, Math.PI*2);
+    ctx.arc(x + eyeOff, y - r*0.2, eyeR*0.5, 0, Math.PI*2);
+    ctx.fill();
+}
+
+function updatePreview() {
+    const cvs = document.getElementById('previewCanvas');
+    const ctx = cvs.getContext('2d');
+    const W = cvs.width, H = cvs.height;
+    ctx.clearRect(0, 0, W, H);
+
+    // Фон-арена
+    const bgGrad = ctx.createRadialGradient(W/2, H*0.6, 40, W/2, H*0.6, W*0.7);
+    bgGrad.addColorStop(0, '#2a2030');
+    bgGrad.addColorStop(1, '#0f0a12');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Сетка пола
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < W; i += 40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,H); ctx.stroke(); }
+    for (let i = 0; i < H; i += 40) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(W,i); ctx.stroke(); }
+
+    // Игрок внизу
+    const px = W/2, py = H - 50;
+    const now = performance.now();
+    const enemyX = W/2;
+    const enemyY = 90 + Math.sin(now/800) * 15;  // легкое покачивание
+    // Враг смотрит на игрока
+    const angleToPlayer = Math.atan2(py - enemyY, px - enemyX);
+
+    drawPlayer(ctx, px, py, -Math.PI/2);
+
+    // Траектория пуль (если стрелок или веер)
+    if (currentEnemy.attack === 'ranged' || currentEnemy.attack === 'fan') {
+        const baseAngle = angleToPlayer + (currentEnemy.bulletAngle || 0) * Math.PI / 180;
+        const spread = currentEnemy.attack === 'fan' ? 0.25 : 0;
+        const count = currentEnemy.attack === 'fan' ? 5 : 1;
+        ctx.strokeStyle = 'rgba(255,255,100,0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5,5]);
+        for (let i = 0; i < count; i++) {
+            const a = baseAngle + (i - (count-1)/2) * spread;
+            ctx.beginPath();
+            ctx.moveTo(enemyX, enemyY);
+            ctx.lineTo(enemyX + Math.cos(a) * 300, enemyY + Math.sin(a) * 300);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+    }
+    // AoE радиус
+    if (currentEnemy.attack === 'aoe') {
+        ctx.strokeStyle = 'rgba(255,100,100,0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(enemyX, enemyY, currentEnemy.size * 3, 0, Math.PI*2);
+        ctx.stroke();
+    }
+
+    drawEnemyShape(ctx, currentEnemy, enemyX, enemyY, 1.2);
+
+    // Текст
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = 'bold 12px Rajdhani';
+    ctx.textAlign = 'center';
+    ctx.fillText('ИГРОК', px, py + 45);
+    ctx.fillText(currentEnemy.name, enemyX, enemyY - 50);
+
+    // Статы в панель
+    document.getElementById('ps_hp').textContent = currentEnemy.hp;
+    document.getElementById('ps_dmg').textContent = currentEnemy.dmg;
+    document.getElementById('ps_speed').textContent = currentEnemy.speed;
+    document.getElementById('ps_atk').textContent = currentEnemy.attack;
+    document.getElementById('ps_bulletSpeed').textContent = currentEnemy.bulletSpeed;
+    document.getElementById('ps_angle').textContent = currentEnemy.bulletAngle + '°';
+    document.getElementById('ps_debuff').textContent = currentEnemy.debuff;
+    document.getElementById('ps_variations').textContent = currentEnemy.variations.length;
+}
+
+// ==================== ВАРИАЦИИ ====================
+function renderVariations() {
+    const list = document.getElementById('variationList');
+    list.innerHTML = '';
+    if (currentEnemy.variations.length === 0) {
+        list.innerHTML = '<div style="color:#666; font-size:13px; padding:8px; font-style:italic;">Нет вариаций. Базовый враг — единственный.</div>';
+        return;
+    }
+    currentEnemy.variations.forEach((v, i) => {
+        const row = document.createElement('div');
+        row.className = 'variationItem';
+
+        const colorIn = document.createElement('input');
+        colorIn.type = 'color';
+        colorIn.className = 'vColor';
+        colorIn.value = v.color;
+        colorIn.style.padding = '0';
+        colorIn.oninput = () => { v.color = colorIn.value; updatePreview(); };
+
+        const nameIn = document.createElement('input');
+        nameIn.type = 'text';
+        nameIn.placeholder = 'Имя (напр. "Синий")';
+        nameIn.value = v.name;
+        nameIn.oninput = () => { v.name = nameIn.value; };
+
+        const hpIn = document.createElement('input');
+        hpIn.type = 'number';
+        hpIn.min = 0.1; hpIn.max = 10; hpIn.step = 0.1;
+        hpIn.value = v.hpMult;
+        hpIn.title = 'Множитель HP (1.0 = как базовый)';
+        hpIn.oninput = () => { v.hpMult = parseFloat(hpIn.value) || 1; };
+
+        const chanceIn = document.createElement('input');
+        chanceIn.type = 'number';
+        chanceIn.min = 0; chanceIn.max = 100;
+        chanceIn.value = v.chance;
+        chanceIn.title = 'Шанс выпадения (%)';
+        chanceIn.oninput = () => { v.chance = parseInt(chanceIn.value) || 0; };
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'vDel';
+        delBtn.textContent = '✖';
+        delBtn.onclick = () => {
+            currentEnemy.variations.splice(i, 1);
+            renderVariations();
+            updatePreview();
+        };
+
+        row.appendChild(colorIn);
+        row.appendChild(nameIn);
+        row.appendChild(hpIn);
+        row.appendChild(chanceIn);
+        row.appendChild(delBtn);
+        list.appendChild(row);
+    });
+}
+
+document.getElementById('addVariationBtn').onclick = () => {
+    if (currentEnemy.variations.length >= 5) {
+        toast('Максимум 5 вариаций', true); return;
+    }
+    currentEnemy.variations.push({
+        name: '',
+        color: currentEnemy.color,
+        hpMult: 1.0,
+        dmgMult: 1.0,
+        debuff: currentEnemy.debuff,
+        chance: 25
+    });
+    renderVariations();
+    updatePreview();
+};
+
+// ==================== СПИСОК ВРАГОВ ====================
+function renderEnemyList() {
+    const list = document.getElementById('enemyList');
+    list.innerHTML = '';
+    document.getElementById('enemyCount').textContent = savedEnemies.length;
+    if (savedEnemies.length === 0) {
+        list.innerHTML = '<div style="color:#666; text-align:center; padding:20px; font-style:italic;">Пока ни одного врага.</div>';
+        return;
+    }
+    savedEnemies.forEach((e, i) => {
+        const item = document.createElement('div');
+        item.className = 'enemyItem' + (i === editingIndex ? ' selected' : '');
+        const cvs = document.createElement('canvas');
+        cvs.width = 48; cvs.height = 48;
+        const cctx = cvs.getContext('2d');
+        const scale = Math.min(1.4, 20 / e.size);
+        drawEnemyShape(cctx, e, 24, 26, scale);
+
+        const info = document.createElement('div');
+        info.className = 'info';
+        info.innerHTML = `<div class="name">${escapeHtml(e.name)}</div>
+            <div class="meta">HP ${e.hp} · DMG ${e.dmg} · ${e.attack} · ${e.debuff}${e.variations.length ? ' · 🎨'+e.variations.length : ''}</div>`;
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn danger small';
+        delBtn.textContent = '✖';
+        delBtn.style.padding = '6px 10px';
+        delBtn.onclick = (ev) => {
+            ev.stopPropagation();
+            if (confirm(`Удалить "${e.name}"?`)) {
+                savedEnemies.splice(i, 1);
+                saveToStorage();
+                renderEnemyList();
+                toast('Удалено');
+            }
+        };
+        item.appendChild(cvs);
+        item.appendChild(info);
+        item.appendChild(delBtn);
+        item.onclick = () => {
+            currentEnemy = JSON.parse(JSON.stringify(e));
+            editingIndex = i;
+            fillFormFromCurrent();
+            renderEnemyList();
+        };
+        list.appendChild(item);
+    });
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ==================== СОХРАНЕНИЕ ====================
+document.getElementById('saveEnemyBtn').onclick = () => {
+    if (!currentEnemy.name.trim()) { toast('Введи имя', true); return; }
+    if (editingIndex >= 0) {
+        savedEnemies[editingIndex] = JSON.parse(JSON.stringify(currentEnemy));
+        toast('Обновлено');
+    } else {
+        currentEnemy.id = 'enemy_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+        savedEnemies.push(JSON.parse(JSON.stringify(currentEnemy)));
+        editingIndex = savedEnemies.length - 1;
+        toast('Сохранено');
+    }
+    saveToStorage();
+    renderEnemyList();
+};
+
+document.getElementById('newEnemyBtn').onclick = () => {
+    currentEnemy = createDefaultEnemy();
+    editingIndex = -1;
+    fillFormFromCurrent();
+    renderEnemyList();
+    toast('Новый враг');
+};
+
+document.getElementById('clearAllBtn').onclick = () => {
+    if (!savedEnemies.length) return;
+    if (confirm('Удалить ВСЕХ кастомных врагов?')) {
+        savedEnemies = [];
+        editingIndex = -1;
+        saveToStorage();
+        renderEnemyList();
+        toast('Всё очищено');
+    }
+};
+
+// ==================== SANDBOX EXPORT ====================
+document.getElementById('sandboxExportBtn').onclick = () => {
+    // Выгружает ТОЛЬКО текущего врага (для теста в sandbox)
+    const data = {
+        type: 'castleCrawler_enemy',
+        version: 1,
+        enemy: currentEnemy
+    };
+    const json = JSON.stringify(data, null, 2);
+    const modal = document.getElementById('jsonModal');
+    document.getElementById('jsonModalTitle').textContent = '🧪 Код для тест-арены (скопируй и вставь в sandbox.html)';
+    const ta = document.getElementById('jsonText');
+    ta.value = json; ta.readOnly = true;
+    document.getElementById('jsonPasteBtn').style.display = 'none';
+    document.getElementById('jsonCopyBtn').style.display = 'inline-block';
+    modal.classList.add('active');
+    // Автокопирование
+    try { navigator.clipboard.writeText(json); toast('Скопировано в буфер'); } catch(e) {}
+};
+
+document.getElementById('openSandboxBtn').onclick = () => {
+    window.open('sandbox.html', '_blank');
+};
+
+// ==================== JSON EXPORT/IMPORT (общий) ====================
+document.getElementById('exportBtn').onclick = () => {
+    const data = { version: 1, spawnChance: globalSpawnChance, enemies: savedEnemies };
+    const json = JSON.stringify(data, null, 2);
+    const modal = document.getElementById('jsonModal');
+    document.getElementById('jsonModalTitle').textContent = '📤 Экспорт всех врагов';
+    const ta = document.getElementById('jsonText');
+    ta.value = json; ta.readOnly = true;
+    document.getElementById('jsonPasteBtn').style.display = 'none';
+    document.getElementById('jsonCopyBtn').style.display = 'inline-block';
+    modal.classList.add('active');
+};
+
+document.getElementById('importBtn').onclick = () => {
+    const modal = document.getElementById('jsonModal');
+    document.getElementById('jsonModalTitle').textContent = '📥 Импорт — вставь JSON';
+    const ta = document.getElementById('jsonText');
+    ta.value = ''; ta.readOnly = false;
+    document.getElementById('jsonPasteBtn').style.display = 'inline-block';
+    document.getElementById('jsonCopyBtn').style.display = 'none';
+    modal.classList.add('active');
+    setTimeout(() => ta.focus(), 100);
+};
+
+document.getElementById('jsonCopyBtn').onclick = async () => {
+    try {
+        await navigator.clipboard.writeText(document.getElementById('jsonText').value);
+        toast('Скопировано');
+    } catch(e) {
+        const ta = document.getElementById('jsonText');
+        ta.select(); document.execCommand('copy');
+        toast('Скопировано');
+    }
+};
+
+document.getElementById('jsonPasteBtn').onclick = () => {
+    try {
+        const data = JSON.parse(document.getElementById('jsonText').value);
+        if (!Array.isArray(data.enemies)) throw new Error('нет массива enemies');
+        const mode = confirm('OK = добавить, Отмена = заменить всё');
+        if (mode) savedEnemies = savedEnemies.concat(data.enemies);
+        else savedEnemies = data.enemies;
+        if (typeof data.spawnChance === 'number') {
+            globalSpawnChance = data.spawnChance;
+            document.getElementById('spawnChance').value = globalSpawnChance;
+            document.getElementById('spawnChanceVal').textContent = globalSpawnChance + '%';
+        }
+        saveToStorage();
+        renderEnemyList();
+        document.getElementById('jsonModal').classList.remove('active');
+        toast('Импортировано: ' + data.enemies.length);
+    } catch(err) {
+        toast('Ошибка: ' + err.message, true);
+    }
+};
+
+document.getElementById('jsonCloseBtn').onclick = () => {
+    document.getElementById('jsonModal').classList.remove('active');
+};
+
+// ==================== TOAST ====================
+let toastTimer = null;
+function toast(msg, isError = false) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.toggle('error', isError);
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ==================== НАВИГАЦИЯ ====================
+document.querySelectorAll('.navBtn[data-screen]').forEach(btn => {
+    btn.onclick = () => {
+        document.querySelectorAll('.navBtn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(btn.dataset.screen).classList.add('active');
+    };
+});
+
+document.getElementById('spawnChance').addEventListener('input', (e) => {
+    globalSpawnChance = parseInt(e.target.value);
+    document.getElementById('spawnChanceVal').textContent = globalSpawnChance + '%';
+    saveToStorage();
+});
+
+// ==================== ПРИВЯЗКА ПОЛЕЙ ====================
+bindField('f_name', 'name', v => String(v).slice(0, 30));
+bindField('f_color', 'color');
+bindField('f_dark', 'dark');
+bindField('f_size', 'size', v => { document.getElementById('f_size_val').textContent = v; return parseInt(v); });
+bindField('f_hp', 'hp', v => { document.getElementById('f_hp_val').textContent = v; return parseInt(v); });
+bindField('f_dmg', 'dmg', v => { document.getElementById('f_dmg_val').textContent = v; return parseInt(v); });
+bindField('f_speed', 'speed', v => { document.getElementById('f_speed_val').textContent = v; return parseInt(v); });
+bindField('f_range', 'range', v => { document.getElementById('f_range_val').textContent = v; return parseInt(v); });
+bindField('f_xp', 'xp', v => { document.getElementById('f_xp_val').textContent = v; return parseInt(v); });
+bindField('f_gold', 'gold', v => { document.getElementById('f_gold_val').textContent = v; return parseInt(v); });
+bindField('f_bulletSpeed', 'bulletSpeed', v => { document.getElementById('f_bulletSpeed_val').textContent = v; return parseInt(v); });
+bindField('f_angle', 'bulletAngle', v => { document.getElementById('f_angle_val').textContent = v; return parseInt(v); });
+
+document.querySelectorAll('#attackGrid .attackCard').forEach(card => {
+    card.onclick = () => {
+        currentEnemy.attack = card.dataset.atk;
+        document.querySelectorAll('#attackGrid .attackCard').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        updatePreview();
+    };
+});
+document.querySelectorAll('#debuffGrid .debuffBtn').forEach(btn => {
+    btn.onclick = () => {
+        currentEnemy.debuff = btn.dataset.d;
+        document.querySelectorAll('#debuffGrid .debuffBtn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        updatePreview();
+    };
+});
+
+// ==================== АНИМАЦИЯ ПРЕВЬЮ ====================
+function animatePreview() {
+    updatePreview();
+    requestAnimationFrame(animatePreview);
+}
+
+// ==================== INIT ====================
+loadFromStorage();
+document.getElementById('spawnChance').value = globalSpawnChance;
+document.getElementById('spawnChanceVal').textContent = globalSpawnChance + '%';
+fillFormFromCurrent();
+renderEnemyList();
+animatePreview();
+</script>
+</body>
+</html>

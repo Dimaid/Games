@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Castle Crawler — Тест-арена</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Rajdhani:wght@500;700&display=swap');
+html, body {
+    margin:0; padding:0; overflow:hidden;
+    background:#0a0a0a; font-family:'Rajdhani',sans-serif;
+    color:#fff; touch-action:none; user-select:none;
+    -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;
+}
+canvas { display:block; }
+
+#ui {
+    position:absolute; top:15px; left:15px;
+    pointer-events:none; text-shadow:0 0 10px rgba(0,0,0,0.8);
+    z-index:5; font-weight:700;
+}
+#ui .barWrap {
+    width:220px; height:18px; background:rgba(0,0,0,0.85);
+    border:2px solid #555; border-radius:4px;
+    margin-bottom:6px; overflow:hidden;
+    box-shadow:inset 0 0 10px #000;
+}
+#ui .barFill { height:100%; transition:width 0.15s; }
+#hpBar { background:linear-gradient(90deg,#8b0000,#ff5555); box-shadow:0 0 15px #ff3333; }
+#ui .statText {
+    font-size:16px; margin-bottom:4px;
+    display:flex; justify-content:space-between; width:220px;
+}
+
+#enemyInfo {
+    position:absolute; top:15px; right:15px;
+    background:rgba(0,0,0,0.75); border:2px solid #d4af37;
+    border-radius:8px; padding:10px 14px;
+    font-size:14px; z-index:5; max-width:220px;
+    box-shadow:0 0 20px rgba(212,175,55,0.4);
+}
+#enemyInfo .title { color:#d4af37; font-weight:700; font-family:'Cinzel',serif; margin-bottom:6px; }
+#enemyInfo .stat { display:flex; justify-content:space-between; padding:2px 0; }
+#enemyInfo .stat b { color:#fff; }
+#enemyInfo .debuff { color:#ff88aa; }
+
+#pasteModal {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(5,5,8,0.96); z-index:100;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:20px;
+    box-sizing:border-box;
+}
+#pasteModal h1 {
+    font-family:'Cinzel',serif; font-size:36px; color:#d4af37;
+    text-shadow:0 0 30px rgba(212,175,55,0.6);
+    margin:0 0 20px; text-align:center;
+}
+#pasteModal p { color:#aaa; max-width:600px; text-align:center; margin-bottom:20px; }
+#pasteModal textarea {
+    width:90%; max-width:600px; height:180px;
+    background:rgba(0,0,0,0.6); color:#8f8;
+    border:2px solid #d4af37; border-radius:8px;
+    padding:14px; font-family:'Courier New',monospace;
+    font-size:13px; resize:vertical;
+    box-sizing:border-box;
+}
+.btnRow { display:flex; gap:10px; margin-top:15px; flex-wrap:wrap; justify-content:center; }
+.btn {
+    padding:12px 30px; border:none; border-radius:8px;
+    font-family:'Rajdhani',sans-serif; font-weight:700; font-size:16px;
+    cursor:pointer; transition:all 0.2s;
+}
+.btn.primary { background:linear-gradient(135deg,#2ecc71,#27ae60); color:#fff; }
+.btn.secondary { background:linear-gradient(135deg,#2a2d35,#1a1c20); color:#d4af37; border:2px solid #d4af37; }
+.btn:hover { transform:translateY(-2px); }
+
+#restartBtn {
+    position:absolute; top:15px; left:50%; transform:translateX(-50%);
+    padding:10px 24px; z-index:5;
+    background:linear-gradient(135deg,#d4af37,#b8941f);
+    color:#1a1a1a; border:3px solid #fff2c0;
+    border-radius:30px; font-weight:700; cursor:pointer;
+    font-family:'Rajdhani',sans-serif; font-size:15px;
+    box-shadow:0 0 20px rgba(212,175,55,0.6);
+    display:none;
+}
+
+/* ЗОНА ДЖОЙСТИКА (левая половина экрана, нижние 70%) */
+#joystickZone {
+    position:absolute; left:0; bottom:0;
+    width:50%; height:70%;
+    z-index:3; /* выше канваса, ниже UI */
+    touch-action:none;
+}
+/* Правая половина — не перехватывает, но и не мешает кнопкам */
+#rightZone {
+    position:absolute; right:0; bottom:0;
+    width:50%; height:70%;
+    z-index:2;
+    touch-action:none;
+}
+
+#controls {
+    position:absolute; bottom:15px; left:15px;
+    color:#aaa; font-size:13px;
+    background:rgba(0,0,0,0.6); padding:10px 15px;
+    border-radius:8px; z-index:5;
+    text-shadow:0 0 6px #000;
+    max-width:45%;
+    pointer-events:none;
+}
+#controls b { color:#d4af37; }
+
+/* Индикатор джойстика */
+#joyHint {
+    position:absolute; bottom:20px; left:20px;
+    color:#00d2ff; font-size:14px; font-weight:700;
+    text-shadow:0 0 10px #00d2ff;
+    opacity:0.7; z-index:4; pointer-events:none;
+    transition:opacity 0.4s;
+}
+</style>
+</head>
+<body>
+
+<div id="pasteModal">
+    <h1>🧪 ТЕСТ-АРЕНА</h1>
+    <p>Вставь код врага из редактора (кнопка «Скопировать для теста») или запусти с обычным врагом. Управление — виртуальный джойстик слева, стрельба автоматическая.</p>
+    <textarea id="pasteText" placeholder='{"type":"castleCrawler_enemy","enemy":{...}}'></textarea>
+    <div class="btnRow">
+        <button class="btn primary" id="loadBtn">▶ Запустить с врагом</button>
+        <button class="btn secondary" id="emptyBtn">Играть с обычным</button>
+    </div>
+</div>
+
+<div id="ui" style="display:none;">
+    <div class="statText"><span>ИГРОК</span><span id="hpText">100/100</span></div>
+    <div class="barWrap"><div id="hpBar" class="barFill" style="width:100%"></div></div>
+</div>
+
+<div id="enemyInfo" style="display:none;">
+    <div class="title">👾 <span id="enemyName">Враг</span></div>
+    <div class="stat"><span>HP</span><b id="ehpText">100</b></div>
+    <div class="stat"><span>Урон</span><b id="edmgText">10</b></div>
+    <div class="stat"><span>Скорость</span><b id="espeedText">110</b></div>
+    <div class="stat"><span>Атака</span><b id="eatkText">melee</b></div>
+    <div class="stat debuff"><span>Дебафф</span><b id="edebuffText">нет</b></div>
+</div>
+
+<div id="controls" style="display:none;">
+    <b>Джойстик</b> слева — движение<br>
+    Автострельба по врагу<br>
+    <b>Клавиатура:</b> WASD / стрелки
+</div>
+
+<div id="joyHint" style="display:none;">⌨️ / 🕹️</div>
+
+<button id="restartBtn">🔄 Рестарт</button>
+
+<div id="joystickZone"></div>
+<div id="rightZone"></div>
+
+<canvas id="c"></canvas>
+
+<script>
+// ==================== CANVAS ====================
+const cvs = document.getElementById('c');
+const ctx = cvs.getContext('2d');
+let W, H;
+function resize() {
+    W = cvs.width = window.innerWidth;
+    H = cvs.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ==================== СОСТОЯНИЕ ====================
+let enemyDef = null;
+let enemy = null;
+let player = null;
+let bullets = [];
+let particles = [];
+let floatingTexts = [];
+let keys = {};
+let running = false;
+let lastTime = performance.now();
+let screenShake = 0;
+let gameOver = false;
+
+// ==================== ДЖОЙСТИК ====================
+const joystick = {
+    active: false,
+    id: null,
+    startX: 0, startY: 0,
+    curX: 0, curY: 0,
+    maxDist: 70,
+    // Вектор движения, нормализованный, от -1 до 1 по каждой оси
+    dx: 0, dy: 0
+};
+
+const joystickZone = document.getElementById('joystickZone');
+
+function handleJoyStart(e) {
+    e.preventDefault();
+    // Если уже активен — не переключаемся
+    if (joystick.active) return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        joystick.active = true;
+        joystick.id = t.identifier;
+        joystick.startX = t.clientX;
+        joystick.startY = t.clientY;
+        joystick.curX = t.clientX;
+        joystick.curY = t.clientY;
+        joystick.dx = 0;
+        joystick.dy = 0;
+        // Скрываем подсказку после первого тапа
+        const hint = document.getElementById('joyHint');
+        if (hint) hint.style.opacity = '0';
+        break;
+    }
+}
+function handleJoyMove(e) {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === joystick.id) {
+            joystick.curX = t.clientX;
+            joystick.curY = t.clientY;
+            const dx = joystick.curX - joystick.startX;
+            const dy = joystick.curY - joystick.startY;
+            const d = Math.hypot(dx, dy);
+            if (d > 5) {
+                const power = Math.min(d, joystick.maxDist) / joystick.maxDist;
+                joystick.dx = (dx / d) * power;
+                joystick.dy = (dy / d) * power;
+            } else {
+                joystick.dx = 0; joystick.dy = 0;
+            }
+        }
+    }
+}
+function handleJoyEnd(e) {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === joystick.id) {
+            joystick.active = false;
+            joystick.id = null;
+            joystick.dx = 0;
+            joystick.dy = 0;
+        }
+    }
+}
+joystickZone.addEventListener('touchstart', handleJoyStart, { passive: false });
+joystickZone.addEventListener('touchmove', handleJoyMove, { passive: false });
+joystickZone.addEventListener('touchend', handleJoyEnd, { passive: false });
+joystickZone.addEventListener('touchcancel', handleJoyEnd, { passive: false });
+
+// Мышь тоже работает (для десктопа) — по джойстику можно водить мышью
+let mouseJoyActive = false;
+joystickZone.addEventListener('mousedown', (e) => {
+    if (joystick.active) return;
+    mouseJoyActive = true;
+    joystick.active = true;
+    joystick.id = 'mouse';
+    joystick.startX = e.clientX;
+    joystick.startY = e.clientY;
+    joystick.curX = e.clientX;
+    joystick.curY = e.clientY;
+});
+window.addEventListener('mousemove', (e) => {
+    if (!mouseJoyActive) return;
+    joystick.curX = e.clientX;
+    joystick.curY = e.clientY;
+    const dx = joystick.curX - joystick.startX;
+    const dy = joystick.curY - joystick.startY;
+    const d = Math.hypot(dx, dy);
+    if (d > 5) {
+        const power = Math.min(d, joystick.maxDist) / joystick.maxDist;
+        joystick.dx = (dx / d) * power;
+        joystick.dy = (dy / d) * power;
+    } else {
+        joystick.dx = 0; joystick.dy = 0;
+    }
+});
+window.addEventListener('mouseup', () => {
+    if (mouseJoyActive) {
+        mouseJoyActive = false;
+        joystick.active = false;
+        joystick.id = null;
+        joystick.dx = 0; joystick.dy = 0;
+    }
+});
+
+// ==================== ИГРОК ====================
+function createPlayer() {
+    return {
+        x: W/2, y: H - 120, radius: 18,
+        hp: 100, maxHp: 100,
+        speed: 240, damage: 12,
+        fireRate: 300, lastShot: 0,
+        angle: -Math.PI/2,
+        invulnUntil: 0,
+        hitFlash: 0,
+        slowAmount: 1.0, slowUntil: 0,
+        fireDotDmg: 0, fireDotUntil: 0,
+        infectDotDmg: 0, infectDotUntil: 0,
+        stunUntil: 0
+    };
+}
+
+// ==================== ВРАГ ====================
+function createEnemy(def) {
+    let picked = null;
+    if (def.variations && def.variations.length > 0) {
+        const totalChance = def.variations.reduce((s, v) => s + (v.chance || 0), 0);
+        if (totalChance > 0 && Math.random() * 100 < totalChance) {
+            let roll = Math.random() * totalChance;
+            for (const v of def.variations) {
+                roll -= (v.chance || 0);
+                if (roll <= 0) { picked = v; break; }
+            }
+        }
+    }
+    const finalColor = picked ? picked.color : def.color;
+    const finalDark = picked ? adjustColor(picked.color, -0.5) : def.dark;
+    const hpMult = picked ? (picked.hpMult || 1) : 1;
+    const dmgMult = picked ? (picked.dmgMult || 1) : 1;
+    const finalDebuff = picked && picked.debuff ? picked.debuff : def.debuff;
+
+    return {
+        x: W/2, y: 100, radius: def.size,
+        hp: def.hp * hpMult, maxHp: def.hp * hpMult,
+        damage: def.dmg * dmgMult,
+        speed: def.speed,
+        color: finalColor,
+        dark: finalDark,
+        attack: def.attack,
+        debuff: finalDebuff,
+        range: def.range,
+        bulletSpeed: def.bulletSpeed || 350,
+        bulletAngle: def.bulletAngle || 0,
+        lastShot: 0,
+        shootCooldown: 2000,
+        attackCooldown: 0,
+        hitFlash: 0,
+        variation: picked,
+        name: def.name + (picked && picked.name ? ' · ' + picked.name : '')
+    };
+}
+
+function adjustColor(hex, amount) {
+    let r = parseInt(hex.substr(1,2), 16);
+    let g = parseInt(hex.substr(3,2), 16);
+    let b = parseInt(hex.substr(5,2), 16);
+    r = Math.max(0, Math.min(255, Math.round(r + 255 * amount)));
+    g = Math.max(0, Math.min(255, Math.round(g + 255 * amount)));
+    b = Math.max(0, Math.min(255, Math.round(b + 255 * amount)));
+    return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+// ==================== ВВОД (клавиатура) ====================
+window.addEventListener('keydown', e => {
+    keys[e.key.toLowerCase()] = true;
+    if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+// ==================== СТРЕЛЬБА ====================
+function playerShoot() {
+    const now = performance.now();
+    if (now - player.lastShot < player.fireRate) return;
+    let angle;
+    if (enemy && enemy.hp > 0) {
+        angle = Math.atan2(enemy.y - player.y, enemy.x - player.x);
+    } else {
+        angle = -Math.PI/2;
+    }
+    player.angle = angle;
+    player.lastShot = now;
+    bullets.push({
+        x: player.x, y: player.y,
+        vx: Math.cos(angle) * 750, vy: Math.sin(angle) * 750,
+        radius: 4, damage: player.damage,
+        isEnemy: false, life: 1.5
+    });
+}
+
+function enemyShoot() {
+    if (!enemy) return;
+    const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x) + (enemy.bulletAngle * Math.PI / 180);
+    const speed = enemy.bulletSpeed;
+    if (enemy.attack === 'ranged') {
+        bullets.push({
+            x: enemy.x, y: enemy.y,
+            vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+            radius: 6, damage: enemy.damage,
+            isEnemy: true, life: 4,
+            sourceDebuff: enemy.debuff
+        });
+    } else if (enemy.attack === 'fan') {
+        for (let i = -2; i <= 2; i++) {
+            const a = angle + i * 0.25;
+            bullets.push({
+                x: enemy.x, y: enemy.y,
+                vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+                radius: 6, damage: enemy.damage,
+                isEnemy: true, life: 4,
+                sourceDebuff: enemy.debuff
+            });
+        }
+    }
+}
+
+// ==================== ДЕБАФФЫ ====================
+function applyDebuff(debuff, baseDmg) {
+    const now = performance.now();
+    if (debuff === 'ice') {
+        player.slowAmount = Math.min(player.slowAmount || 1, 1/1.4);
+        player.slowUntil = now + 5000;
+        createText(player.x, player.y - 40, '❄️', '#80d0ff');
+    } else if (debuff === 'fire') {
+        player.fireDotDmg = baseDmg * 0.35;
+        player.fireDotUntil = now + 3000;
+        createText(player.x, player.y - 40, '🔥', '#ff5522');
+    } else if (debuff === 'infect') {
+        player.infectDotDmg = 3;
+        player.infectDotUntil = now + 10000;
+        createText(player.x, player.y - 40, '🦠', '#00ff88');
+    } else if (debuff === 'slow') {
+        player.slowAmount = Math.min(player.slowAmount || 1, 1/1.6);
+        player.slowUntil = now + 4000;
+        createText(player.x, player.y - 40, '🐌', '#9b59b6');
+    } else if (debuff === 'stun') {
+        player.stunUntil = now + 1500;
+        createText(player.x, player.y - 40, '💫', '#f1c40f');
+    }
+}
+
+// ==================== ЧАСТИЦЫ ====================
+function createParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const s = 50 + Math.random() * 200;
+        particles.push({
+            x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s,
+            life: 0.5 + Math.random()*0.3, maxLife: 0.8,
+            color, radius: 2 + Math.random()*3
+        });
+    }
+}
+function createText(x, y, text, color) {
+    floatingTexts.push({ x, y, text, color, life: 1.5, maxLife: 1.5, vy: -50 });
+}
+
+// ==================== UPDATE ====================
+function update(dt) {
+    if (!running || gameOver) return;
+    const now = performance.now();
+
+    // Дебаффы
+    if (player.slowUntil > 0 && now > player.slowUntil) {
+        player.slowAmount = 1.0; player.slowUntil = 0;
+    }
+    if (player.fireDotUntil > now && player.fireDotDmg > 0) {
+        player.hp -= player.fireDotDmg * dt;
+        if (Math.random() < 0.3) createParticles(player.x, player.y, '#ff5522', 1);
+    }
+    if (player.infectDotUntil > now && player.infectDotDmg > 0) {
+        player.hp -= player.infectDotDmg * dt;
+        if (Math.random() < 0.3) createParticles(player.x, player.y, '#00ff88', 1);
+    }
+
+    // Движение: клавиатура + джойстик
+    let dx = 0, dy = 0;
+    if (keys['w'] || keys['arrowup'] || keys['ц']) dy -= 1;
+    if (keys['s'] || keys['arrowdown'] || keys['ы']) dy += 1;
+    if (keys['a'] || keys['arrowleft'] || keys['ф']) dx -= 1;
+    if (keys['d'] || keys['arrowright'] || keys['в']) dx += 1;
+
+    // Если есть ввод с джойстика — он приоритетнее
+    if (joystick.active && (Math.abs(joystick.dx) > 0.05 || Math.abs(joystick.dy) > 0.05)) {
+        dx = joystick.dx;
+        dy = joystick.dy;
+    }
+
+    const isStunned = player.stunUntil > now;
+    if (!isStunned) {
+        const m = Math.hypot(dx, dy);
+        if (m > 1) { dx /= m; dy /= m; }
+        if (m > 0.05) {
+            const slow = player.slowAmount || 1.0;
+            player.x += dx * player.speed * slow * dt;
+            player.y += dy * player.speed * slow * dt;
+        }
+    }
+    player.x = Math.max(30, Math.min(W - 30, player.x));
+    player.y = Math.max(30, Math.min(H - 30, player.y));
+
+    if (player.hitFlash > 0) player.hitFlash -= dt * 5;
+    if (player.hp <= 0) { gameOver = true; return; }
+
+    playerShoot();
+
+    // Враг
+    if (enemy && enemy.hp > 0) {
+        const dxE = player.x - enemy.x;
+        const dyE = player.y - enemy.y;
+        const dist = Math.hypot(dxE, dyE);
+        const angle = Math.atan2(dyE, dxE);
+
+        if (enemy.attack === 'melee') {
+            if (dist > enemy.radius + player.radius + 5) {
+                enemy.x += Math.cos(angle) * enemy.speed * dt;
+                enemy.y += Math.sin(angle) * enemy.speed * dt;
+            } else if (enemy.attackCooldown <= 0) {
+                player.hp -= enemy.damage;
+                player.hitFlash = 1;
+                screenShake = 10;
+                enemy.attackCooldown = 0.8;
+                if (enemy.debuff && enemy.debuff !== 'none') applyDebuff(enemy.debuff, enemy.damage);
+                createParticles(player.x, player.y, '#ff3366', 8);
+            }
+        } else if (enemy.attack === 'ranged' || enemy.attack === 'fan') {
+            const ideal = enemy.range;
+            if (dist > ideal + 50) {
+                enemy.x += Math.cos(angle) * enemy.speed * dt;
+                enemy.y += Math.sin(angle) * enemy.speed * dt;
+            } else if (dist < ideal - 50) {
+                enemy.x -= Math.cos(angle) * enemy.speed * dt;
+                enemy.y -= Math.sin(angle) * enemy.speed * dt;
+            }
+            enemy.lastShot += dt * 1000;
+            if (enemy.lastShot > enemy.shootCooldown) {
+                enemyShoot(); enemy.lastShot = 0;
+            }
+        } else if (enemy.attack === 'aoe') {
+            if (dist > enemy.radius * 3 + player.radius) {
+                enemy.x += Math.cos(angle) * enemy.speed * dt;
+                enemy.y += Math.sin(angle) * enemy.speed * dt;
+            } else if (enemy.attackCooldown <= 0) {
+                if (dist < enemy.radius * 3 + player.radius) {
+                    player.hp -= enemy.damage;
+                    player.hitFlash = 1;
+                    screenShake = 15;
+                    if (enemy.debuff && enemy.debuff !== 'none') applyDebuff(enemy.debuff, enemy.damage);
+                }
+                createParticles(enemy.x, enemy.y, '#ff9900', 25);
+                enemy.attackCooldown = 1.5;
+            }
+        }
+        if (enemy.attackCooldown > 0) enemy.attackCooldown -= dt;
+        enemy.x = Math.max(30, Math.min(W - 30, enemy.x));
+        enemy.y = Math.max(30, Math.min(H - 30, enemy.y));
+        if (enemy.hitFlash > 0) enemy.hitFlash -= dt * 5;
+    }
+
+    // Пули
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+        if (b.life <= 0 || b.x < -50 || b.x > W+50 || b.y < -50 || b.y > H+50) {
+            bullets.splice(i, 1); continue;
+        }
+        if (b.isEnemy) {
+            if (Math.hypot(b.x - player.x, b.y - player.y) < b.radius + player.radius) {
+                if (player.invulnUntil < now) {
+                    player.hp -= b.damage;
+                    player.hitFlash = 1;
+                    player.invulnUntil = now + 300;
+                    screenShake = 6;
+                    if (b.sourceDebuff && b.sourceDebuff !== 'none') applyDebuff(b.sourceDebuff, b.damage);
+                    createParticles(b.x, b.y, '#ff3366', 5);
+                }
+                bullets.splice(i, 1);
+            }
+        } else if (enemy && enemy.hp > 0) {
+            if (Math.hypot(b.x - enemy.x, b.y - enemy.y) < b.radius + enemy.radius) {
+                enemy.hp -= b.damage;
+                enemy.hitFlash = 1;
+                createText(enemy.x, enemy.y - enemy.radius, Math.floor(b.damage), '#ffcc00');
+                createParticles(b.x, b.y, enemy.color, 4);
+                bullets.splice(i, 1);
+            }
+        }
+    }
+
+    // Частицы / тексты
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        p.vx *= 0.95; p.vy *= 0.95;
+        p.life -= dt;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const t = floatingTexts[i];
+        t.y += t.vy * dt; t.life -= dt;
+        if (t.life <= 0) floatingTexts.splice(i, 1);
+    }
+
+    if (screenShake > 0) screenShake -= dt * 30;
+
+    // UI
+    document.getElementById('hpText').textContent = Math.max(0, Math.floor(player.hp)) + '/' + player.maxHp;
+    document.getElementById('hpBar').style.width = Math.max(0, player.hp/player.maxHp*100) + '%';
+    if (enemy) {
+        document.getElementById('ehpText').textContent = Math.max(0, Math.floor(enemy.hp)) + '/' + Math.floor(enemy.maxHp);
+    }
+}
+
+// ==================== DRAW ====================
+function draw() {
+    ctx.save();
+    if (screenShake > 0) {
+        ctx.translate((Math.random()-0.5)*screenShake, (Math.random()-0.5)*screenShake);
+    }
+
+    // Фон
+    const bg = ctx.createRadialGradient(W/2, H/2, 100, W/2, H/2, Math.max(W,H)*0.7);
+    bg.addColorStop(0, '#2a2030');
+    bg.addColorStop(1, '#0f0a12');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Сетка
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < W; i += 60) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,H); ctx.stroke(); }
+    for (let i = 0; i < H; i += 60) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(W,i); ctx.stroke(); }
+
+    // Частицы
+    particles.forEach(p => {
+        ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 12; ctx.shadowColor = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+    // Пули
+    bullets.forEach(b => {
+        const col = b.isEnemy ? '#ff4444' : '#00d2ff';
+        ctx.fillStyle = col;
+        ctx.shadowBlur = 8; ctx.shadowColor = col;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+    });
+
+    // Враг
+    if (enemy && enemy.hp > 0) {
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.beginPath(); ctx.ellipse(enemy.x, enemy.y + enemy.radius*0.9, enemy.radius, enemy.radius*0.35, 0, 0, Math.PI*2); ctx.fill();
+
+        ctx.shadowBlur = 25; ctx.shadowColor = enemy.color;
+        const g = ctx.createRadialGradient(
+            enemy.x - enemy.radius*0.35, enemy.y - enemy.radius*0.35, enemy.radius*0.1,
+            enemy.x, enemy.y, enemy.radius*1.1
+        );
+        if (enemy.hitFlash > 0) {
+            g.addColorStop(0, '#fff'); g.addColorStop(1, '#fcc');
+        } else {
+            g.addColorStop(0, enemy.color);
+            g.addColorStop(0.7, enemy.color);
+            g.addColorStop(1, enemy.dark);
+        }
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+
+        const tints = {
+            ice:'rgba(120,200,255,0.35)', fire:'rgba(255,80,40,0.4)',
+            infect:'rgba(80,255,120,0.3)', slow:'rgba(155,89,182,0.35)', stun:'rgba(241,196,15,0.4)'
+        };
+        if (enemy.debuff && enemy.debuff !== 'none' && tints[enemy.debuff]) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = tints[enemy.debuff];
+            ctx.beginPath(); ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI*2); ctx.fill();
+            ctx.restore();
+        }
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI*2); ctx.stroke();
+
+        const eyeR = Math.max(2, enemy.radius * 0.22);
+        const eyeOff = enemy.radius * 0.35;
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(enemy.x - eyeOff, enemy.y - enemy.radius*0.2, eyeR, 0, Math.PI*2);
+        ctx.arc(enemy.x + eyeOff, enemy.y - enemy.radius*0.2, eyeR, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(enemy.x - eyeOff, enemy.y - enemy.radius*0.2, eyeR*0.5, 0, Math.PI*2);
+        ctx.arc(enemy.x + eyeOff, enemy.y - enemy.radius*0.2, eyeR*0.5, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px Rajdhani';
+        ctx.textAlign = 'center';
+        ctx.fillText(enemy.name, enemy.x, enemy.y - enemy.radius - 20);
+    }
+
+    // Игрок
+    if (player) {
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.beginPath(); ctx.ellipse(player.x, player.y + player.radius*0.95, player.radius, player.radius*0.35, 0, 0, Math.PI*2); ctx.fill();
+
+        const isInv = player.invulnUntil > performance.now();
+        ctx.globalAlpha = isInv && Math.floor(performance.now()/100)%2 === 0 ? 0.4 : 1;
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = player.hitFlash > 0 ? '#ff0000' : '#00d2ff';
+        const pg = ctx.createRadialGradient(
+            player.x - player.radius*0.35, player.y - player.radius*0.35, player.radius*0.1,
+            player.x, player.y, player.radius*1.1
+        );
+        if (player.hitFlash > 0) {
+            pg.addColorStop(0, '#faa'); pg.addColorStop(1, '#a00');
+        } else {
+            pg.addColorStop(0, '#80e0ff');
+            pg.addColorStop(0.6, '#4facfe');
+            pg.addColorStop(1, '#0066cc');
+        }
+        ctx.fillStyle = pg;
+        ctx.beginPath(); ctx.arc(player.x, player.y, player.radius, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        ctx.rotate(player.angle);
+        ctx.fillStyle = '#7f8c8d';
+        ctx.fillRect(player.radius - 2, -6, 20, 12);
+        ctx.fillStyle = '#bdc3c7';
+        ctx.fillRect(player.radius + 16, -4, 4, 8);
+        ctx.restore();
+
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(player.x - player.radius*0.35, player.y - player.radius*0.15, player.radius*0.25, 0, Math.PI*2);
+        ctx.arc(player.x + player.radius*0.35, player.y - player.radius*0.15, player.radius*0.25, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#0d0f12';
+        ctx.beginPath();
+        ctx.arc(player.x - player.radius*0.35, player.y - player.radius*0.15, player.radius*0.12, 0, Math.PI*2);
+        ctx.arc(player.x + player.radius*0.35, player.y - player.radius*0.15, player.radius*0.12, 0, Math.PI*2);
+        ctx.fill();
+
+        // Индикаторы дебаффов
+        if (player.fireDotUntil > performance.now()) {
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = '#ff5522'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(player.x, player.y, player.radius + 10, 0, Math.PI*2); ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+        if (player.infectDotUntil > performance.now()) {
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(player.x, player.y, player.radius + 14, 0, Math.PI*2); ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+        if (player.slowUntil > performance.now()) {
+            ctx.globalAlpha = 0.4;
+            ctx.strokeStyle = '#80d0ff'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(player.x, player.y, player.radius + 6, 0, Math.PI*2); ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    // Floating text
+    floatingTexts.forEach(t => {
+        ctx.globalAlpha = Math.min(1, t.life/t.maxLife*1.5);
+        ctx.fillStyle = t.color;
+        ctx.font = 'bold 22px Rajdhani';
+        ctx.textAlign = 'center';
+        ctx.shadowBlur = 15; ctx.shadowColor = t.color;
+        ctx.fillText(t.text, t.x, t.y);
+    });
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+    // Vignette
+    const vg = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*0.4, W/2, H/2, Math.max(W,H)*0.7);
+    vg.addColorStop(0, 'transparent');
+    vg.addColorStop(1, 'rgba(0,0,0,0.65)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, W, H);
+
+    // ДЖОЙСТИК — рисуем поверх всего, чтобы было видно
+    if (joystick.active) {
+        // Внешнее кольцо
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(joystick.startX, joystick.startY, joystick.maxDist, 0, Math.PI*2);
+        ctx.stroke();
+
+        // Ограниченная позиция стика
+        const dx = joystick.curX - joystick.startX;
+        const dy = joystick.curY - joystick.startY;
+        const d = Math.hypot(dx, dy);
+        const clamped = Math.min(d, joystick.maxDist);
+        const nx = joystick.startX + (d > 0 ? (dx/d)*clamped : 0);
+        const ny = joystick.startY + (d > 0 ? (dy/d)*clamped : 0);
+
+        // Внутренний круг — синий градиент
+        ctx.fillStyle = 'rgba(0,210,255,0.7)';
+        ctx.shadowBlur = 20; ctx.shadowColor = '#00d2ff';
+        ctx.beginPath(); ctx.arc(nx, ny, 28, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        // Белая точка-центр
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.beginPath(); ctx.arc(nx, ny, 15, 0, Math.PI*2); ctx.fill();
+    }
+
+    // GAME OVER
+    if (gameOver) {
+        ctx.fillStyle = 'rgba(0,0,0,0.75)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#e74c3c';
+        ctx.font = 'bold 64px Cinzel, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('ВЫ ПОГИБЛИ', W/2, H/2);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 22px Rajdhani';
+        ctx.fillText('Нажми Рестарт', W/2, H/2 + 55);
+    }
+
+    ctx.restore();
+}
+
+// ==================== ЦИКЛ ====================
+function loop(t) {
+    const dt = Math.min((t - lastTime) / 1000, 0.05);
+    lastTime = t;
+    if (running) { update(dt); draw(); }
+    requestAnimationFrame(loop);
+}
+
+// ==================== UI ====================
+document.getElementById('loadBtn').onclick = () => {
+    try {
+        const raw = document.getElementById('pasteText').value.trim();
+        if (!raw) { alert('Вставь код врага!'); return; }
+        const data = JSON.parse(raw);
+        if (!data.enemy) throw new Error('нет поля enemy');
+        enemyDef = data.enemy;
+        startGame();
+    } catch(e) {
+        alert('Ошибка JSON: ' + e.message);
+    }
+};
+document.getElementById('emptyBtn').onclick = () => {
+    enemyDef = {
+        name: 'Обычный',
+        color: '#ff3366',
+        dark: '#990033',
+        size: 18, hp: 40, dmg: 8, speed: 100, range: 250,
+        attack: 'ranged', debuff: 'none',
+        bulletSpeed: 350, bulletAngle: 0,
+        variations: []
+    };
+    startGame();
+};
+document.getElementById('restartBtn').onclick = () => {
+    if (enemyDef) startGame();
+};
+
+function startGame() {
+    document.getElementById('pasteModal').style.display = 'none';
+    document.getElementById('ui').style.display = 'block';
+    document.getElementById('enemyInfo').style.display = 'block';
+    document.getElementById('controls').style.display = 'block';
+    document.getElementById('restartBtn').style.display = 'block';
+    document.getElementById('joyHint').style.display = 'block';
+
+    player = createPlayer();
+    enemy = createEnemy(enemyDef);
+    bullets = [];
+    particles = [];
+    floatingTexts = [];
+    gameOver = false;
+    running = true;
+    joystick.active = false;
+    joystick.id = null;
+    joystick.dx = 0; joystick.dy = 0;
+
+    document.getElementById('enemyName').textContent = enemy.name;
+    document.getElementById('edmgText').textContent = Math.round(enemy.damage);
+    document.getElementById('espeedText').textContent = enemy.speed;
+    document.getElementById('eatkText').textContent = enemy.attack;
+    document.getElementById('edebuffText').textContent = enemy.debuff;
+
+    lastTime = performance.now();
+}
+
+try {
+    const params = new URLSearchParams(window.location.search);
+    const eParam = params.get('e');
+    if (eParam) document.getElementById('pasteText').value = decodeURIComponent(eParam);
+} catch(e) {}
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
